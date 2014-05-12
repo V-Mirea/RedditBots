@@ -11,8 +11,9 @@ def formatPost(defins, comment):
         post = "---\n> [**%s**](http://www.wordnik.com/words/%s) %s" % (searchword, searchword, pro[0].raw)
         for defin in defins:
             post = '\n\n> * '.join([post, defin.text])
-        post = '\n'.join([post, "\n\n ^Scrabble ^score: ^%s\n\n---\n [^Report ^a ^problem](http://www.np.reddit.com/message/compose?to=djmanex&subject=DictBot Problem&message=Problem: %s)"
-            % (sScore.value, comment)])
+        post = '\n'.join([post, "\n\n ^Scrabble ^score: ^%s\n\n---\n [^Report ^a ^problem](http://www.np.reddit.com/message/compose?to=djmanex&subject=DictBot Problem&message=Problem: %s) ^| \
+            [^Source ^code](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/DictBot.py) ^| \
+            [^More ^info](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/README.md)" % (sScore.value, comment)])
     return post
 
 r = praw.Reddit("Dictionary bot by /u/DjManEX")
@@ -20,7 +21,7 @@ r.login(username = "Username", password = "Password")
 print "Logged in to Reddit."
 
 apiUrl = 'http://api.wordnik.com/v4'
-apiKey = 'Key'
+apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
 client = swagger.ApiClient(apiKey, apiUrl)
 wordApi = WordApi.WordApi(client)
 print "Logged in to Wordnik API.\n"
@@ -50,14 +51,16 @@ while True:
             except praw.errors.RateLimitExceeded as error:
                 print "Bot posting too much. Sleeping for %s seconds." % error.sleep_time
                 time.sleep(error.sleep_time)
-                print "Done sleeping."
+                print "Done sleeping.\n"
+                comment.reply(formatted)
+                print "Replied."
             except praw.requests.HTTPError:
                 print "Bot attempted to post in a banned subreddit.\n"
             except Exception:
                 error = traceback.format_exc()
                 print "Unknown error occured.\n" + error
             else:
-                print "Replied."
+                print "Replied.\n"
             already_done.append(comment.id)
             
     

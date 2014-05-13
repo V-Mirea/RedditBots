@@ -38,20 +38,34 @@ def replied(comment):
 		for child in children:
 			if child.author.name in ["DictBot", bot_user]:
 				return True
+				
+def is_duplicate(comment, searchword):
+	flat_tree = praw.helpers.flatten_tree(comment.submission.comments, nested_attr=u'replies', depth_first=False)
+	
+	for comm in flat_tree:
+		if comm.author.name in ["DictBot", bot_user] and searchword in comm.body and comm != comment:
+			return True
 
 if __name__ == '__main__':
 	while True:
 		try:
-			commentList = r.get_comments('all', limit = 1000)
+			commentList = r.get_comments('test', limit = 1000)
 			
 			for comment in commentList:
 				replied(comment) #check if bot has already replied
+				
 				if (comment.body.lower()[0:15] == "dictbot define ") and not replied(comment):
 					searchword = comment.body.lower()[15:]
 					print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
 					definitions = wordApi.getDefinitions(searchword)
 					formatted = formatPost(definitions, comment.id)
-					comment.reply(formatted)
+					
+					is_duplicate(comment, searchword) #check if theres a duplicate in the thread
+					if not is_duplicate(comment, searchword):
+						comment.reply(formatted)
+						print 'Replied with definition.'
+					else:
+						print 'Duplicate found. Skipped.'
 
 		except praw.requests.HTTPError:
 			print "No connection to Reddit.\n"
@@ -65,6 +79,7 @@ if __name__ == '__main__':
 			continue
 		
 		except Exception as error:
-			print "Unknown error occured while attempting to retrieve comments.\n" + str(error)
+			print "Unknown error occured while attempting to retrieve comments.\n"
+			print error
 			continue
 			

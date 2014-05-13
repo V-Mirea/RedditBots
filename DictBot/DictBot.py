@@ -28,39 +28,40 @@ print "Logged in to Wordnik API.\n"
 
 already_done = []
 
-while True:
-    try:
-        commentList = r.get_comments('all', limit = 1000)
-    except praw.requests.HTTPError:
-        print "No connection to Reddit.\n"
-        time.sleep(20)
-        continue
-    except Exception:
-        error = traceback.format_exc()
-        print "Unknown error occured while attempting to retrieve comments.\n" + error
-        continue
-    
-    for comment in commentList:
-        if (comment.body.lower()[0:15] == "dictbot define ") and (comment.id not in already_done):
-            searchword = comment.body.lower()[15:]
-            print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
-            definitions = wordApi.getDefinitions(searchword)
-            formatted = formatPost(definitions, comment.id)
-            try:
-                comment.reply(formatted)
-            except praw.errors.RateLimitExceeded as error:
-                print "Bot posting too much. Sleeping for %s seconds." % error.sleep_time
-                time.sleep(error.sleep_time)
-                print "Done sleeping.\n"
-                comment.reply(formatted)
-                print "Replied."
-            except praw.requests.HTTPError:
-                print "Bot attempted to post in a banned subreddit.\n"
-            except Exception:
-                error = traceback.format_exc()
-                print "Unknown error occured.\n" + error
-            else:
-                print "Replied.\n"
-            already_done.append(comment.id)
+if __name__ == '__main__':
+	while True:
+	    try:
+	        commentList = r.get_comments('all', limit = 1000)
+	    except praw.requests.HTTPError:
+	        print "No connection to Reddit.\n"
+	        time.sleep(20)
+	        continue
+	    except Exception:
+	        error = traceback.format_exc()
+	        print "Unknown error occured while attempting to retrieve comments.\n" + error
+	        continue
+	    
+	    for comment in commentList:
+	        if (comment.body.lower()[0:15] == "dictbot define ") and (comment.id not in already_done):
+	            searchword = comment.body.lower()[15:]
+	            print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
+	            definitions = wordApi.getDefinitions(searchword)
+	            formatted = formatPost(definitions, comment.id)
+	            try:
+	                comment.reply(formatted)
+	            except praw.errors.RateLimitExceeded as error:
+	                print "Bot posting too much. Sleeping for %s seconds." % error.sleep_time
+	                time.sleep(error.sleep_time)
+	                print "Done sleeping.\n"
+	                comment.reply(formatted)
+	                print "Replied."
+	            except praw.requests.HTTPError:
+	                print "Bot attempted to post in a banned subreddit.\n"
+	            except Exception:
+	                error = traceback.format_exc()
+	                print "Unknown error occured.\n" + error
+	            else:
+	                print "Replied.\n"
+	            already_done.append(comment.id)
             
     

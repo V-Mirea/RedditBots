@@ -1,6 +1,21 @@
 import praw, time
 from wordnik import *
 
+### CONFIG ###
+bot_user = raw_input("Bot username? >")
+bot_pass = raw_input("Bot password? >")
+
+r = praw.Reddit("Dictionary bot by /u/DjManEX")
+r.login(username = bot_user, password = bot_pass)
+print "Logged in to Reddit."
+
+apiUrl = 'http://api.wordnik.com/v4'
+apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
+client = swagger.ApiClient(apiKey, apiUrl)
+wordApi = WordApi.WordApi(client)
+print "Logged in to Wordnik API.\n"
+### END CONFIG ###
+
 def formatPost(defins, comment):
     if defins == None:
         post = "---\n> [**%s**](http://www.wordnik.com/words/%s)\n\n> *No definitions found.*\n\n ^Scrabble ^score: ^N/A\n\n---\n\n" % (searchword, searchword) + \
@@ -16,17 +31,13 @@ def formatPost(defins, comment):
             [^More ^info](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/README.md)" % (sScore.value, comment)])
     return post
 
-r = praw.Reddit("Dictionary bot by /u/DjManEX")
-r.login(username = "Username", password = "Password")
-print "Logged in to Reddit."
-
-apiUrl = 'http://api.wordnik.com/v4'
-apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
-client = swagger.ApiClient(apiKey, apiUrl)
-wordApi = WordApi.WordApi(client)
-print "Logged in to Wordnik API.\n"
-
-already_done = []
+def replied(comment):
+	children = comment.replies
+	
+	if children:
+		for child in children:
+			if child.author.name in ["DictBot", bot_user]:
+				return True
 
 if __name__ == '__main__':
 	while True:
@@ -34,13 +45,13 @@ if __name__ == '__main__':
 			commentList = r.get_comments('all', limit = 1000)
 			
 			for comment in commentList:
-				if (comment.body.lower()[0:15] == "dictbot define ") and (comment.id not in already_done):
+				replied(comment) #check if bot has already replied
+				if (comment.body.lower()[0:15] == "dictbot define ") and not replied(comment):
 					searchword = comment.body.lower()[15:]
 					print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
 					definitions = wordApi.getDefinitions(searchword)
 					formatted = formatPost(definitions, comment.id)
 					comment.reply(formatted)
-					already_done.append(comment.id)
 
 		except praw.requests.HTTPError:
 			print "No connection to Reddit.\n"
@@ -53,7 +64,7 @@ if __name__ == '__main__':
 			print "Done sleeping.\n"
 			continue
 		
-		except Exception:
-			error = traceback.format_exc()
-			print "Unknown error occured while attempting to retrieve comments.\n" + error
+		except Exception as error:
+			print "Unknown error occured while attempting to retrieve comments.\n" + str(error)
 			continue
+			

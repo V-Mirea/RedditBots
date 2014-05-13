@@ -1,6 +1,21 @@
 import praw, time
 from wordnik import *
 
+### CONFIG ###
+bot_user = raw_input("Bot username? >")
+bot_pass = raw_input("Bot password? >")
+
+r = praw.Reddit("Dictionary bot by /u/DjManEX")
+r.login(username = bot_user, password = bot_pass)
+print "Logged in to Reddit."
+
+apiUrl = 'http://api.wordnik.com/v4'
+apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
+client = swagger.ApiClient(apiKey, apiUrl)
+wordApi = WordApi.WordApi(client)
+print "Logged in to Wordnik API.\n"
+### END CONFIG ###
+
 def formatPost(defins, comment):
     if defins == None:
         post = "---\n> [**%s**](http://www.wordnik.com/words/%s)\n\n> *No definitions found.*\n\n ^Scrabble ^score: ^N/A\n\n---\n\n" % (searchword, searchword) + \
@@ -16,51 +31,55 @@ def formatPost(defins, comment):
             [^More ^info](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/README.md)" % (sScore.value, comment)])
     return post
 
-r = praw.Reddit("Dictionary bot by /u/DjManEX")
-r.login(username = "Username", password = "Password")
-print "Logged in to Reddit."
+def replied(comment):
+	children = comment.replies
+	
+	if children:
+		for child in children:
+			if child.author.name in ["DictBot", bot_user]:
+				return True
+				
+def is_duplicate(comment, searchword):
+	flat_tree = praw.helpers.flatten_tree(comment.submission.comments, nested_attr=u'replies', depth_first=False)
+	
+	for comm in flat_tree:
+		if comm.author.name in ["DictBot", bot_user] and searchword in comm.body and comm != comment:
+			return True
 
-apiUrl = 'http://api.wordnik.com/v4'
-apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
-client = swagger.ApiClient(apiKey, apiUrl)
-wordApi = WordApi.WordApi(client)
-print "Logged in to Wordnik API.\n"
+if __name__ == '__main__':
+	while True:
+		try:
+			commentList = r.get_comments('test', limit = 1000)
+			
+			for comment in commentList:
+				replied(comment) #check if bot has already replied
+				
+				if (comment.body.lower()[0:15] == "dictbot define ") and not replied(comment):
+					searchword = comment.body.lower()[15:]
+					print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
+					definitions = wordApi.getDefinitions(searchword)
+					formatted = formatPost(definitions, comment.id)
+					
+					is_duplicate(comment, searchword) #check if theres a duplicate in the thread
+					if not is_duplicate(comment, searchword):
+						comment.reply(formatted)
+						print 'Replied with definition.'
+					else:
+						print 'Duplicate found. Skipped.'
 
-already_done = []
-
-while True:
-    try:
-        commentList = r.get_comments('all', limit = 1000)
-    except praw.requests.HTTPError:
-        print "No connection to Reddit.\n"
-        time.sleep(20)
-        continue
-    except Exception:
-        error = traceback.format_exc()
-        print "Unknown error occured while attempting to retrieve comments.\n" + error
-        continue
-    
-    for comment in commentList:
-        if (comment.body.lower()[0:15] == "dictbot define ") and (comment.id not in already_done):
-            searchword = comment.body.lower()[15:]
-            print "\"%s\" requested in /r/%s by /u/%s" % (searchword, comment.subreddit.display_name, comment.author.name)
-            definitions = wordApi.getDefinitions(searchword)
-            formatted = formatPost(definitions, comment.id)
-            try:
-                comment.reply(formatted)
-            except praw.errors.RateLimitExceeded as error:
-                print "Bot posting too much. Sleeping for %s seconds." % error.sleep_time
-                time.sleep(error.sleep_time)
-                print "Done sleeping.\n"
-                comment.reply(formatted)
-                print "Replied."
-            except praw.requests.HTTPError:
-                print "Bot attempted to post in a banned subreddit.\n"
-            except Exception:
-                error = traceback.format_exc()
-                print "Unknown error occured.\n" + error
-            else:
-                print "Replied.\n"
-            already_done.append(comment.id)
-            
-    
+		except praw.requests.HTTPError:
+			print "No connection to Reddit.\n"
+			time.sleep(20)
+			continue
+		
+		except praw.errors.RateLimitExceeded as error:
+			print "Bot posting too much. Sleeping for %s seconds." % error.sleep_time
+			time.sleep(error.sleep_time)
+			print "Done sleeping.\n"
+			continue
+		
+		except Exception as error:
+			print "Unknown error occured while attempting to retrieve comments.\n"
+			print error
+			continue
+			

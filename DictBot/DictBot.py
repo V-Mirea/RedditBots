@@ -10,13 +10,16 @@ def formatPost(defins, comment):
         if pro == None:
             pro = wordApi.getTextPronunciations("kiwi", limit = 1)
             pro[0].raw = ""
-        sScore = wordApi.getScrabbleScore(searchword)
+        try:
+            sScore = wordApi.getScrabbleScore(searchword).value
+        except:
+            sScore = "N/A"
         post = "---\n> [**%s**](http://www.wordnik.com/words/%s) %s" % (searchword, searchword, pro[0].raw)
         for defin in defins:
             post = '\n\n> * '.join([post, defin.text])
         post = '\n'.join([post, "\n\n ^Scrabble ^score: ^%s\n\n---\n [^Report ^a ^problem](http://www.np.reddit.com/message/compose?to=djmanex&subject=DictBot Problem&message=Problem: %s) ^| \
             [^Source ^code](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/DictBot.py) ^| \
-            [^More ^info](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/README.md)" % (sScore.value, comment)])
+            [^More ^info](https://github.com/SpeedOfSmell/RedditBots/blob/master/DictBot/README.md)" % (sScore, comment)])
     return post
 
 r = praw.Reddit("Dictionary bot by /u/DjManEX")
@@ -24,7 +27,7 @@ r.login(username = "Username", password = "Password")
 print "Logged in to Reddit."
 
 apiUrl = 'http://api.wordnik.com/v4'
-apiKey = 'd62ea5e532f697a4391060c8cf20d1fe1fa7e8901e5a4fcfc'
+apiKey = 'Key'
 client = swagger.ApiClient(apiKey, apiUrl)
 wordApi = WordApi.WordApi(client)
 print "Logged in to Wordnik API.\n"
@@ -38,9 +41,8 @@ while True:
         print "No connection to Reddit.\n"
         time.sleep(20)
         continue
-    except Exception:
-        error = traceback.format_exc()
-        print "Unknown error occured while attempting to retrieve comments.\n" + error
+    except Exception, e:
+        print "Unknown error occured while attempting to retrieve comments.\n" + str(e)
         continue
     try:
         for comment in commentList:
@@ -59,14 +61,13 @@ while True:
                     print "Replied."
                 except praw.requests.HTTPError:
                     print "Bot attempted to post in a banned subreddit.\n"
-                except Exception:
-                    error = traceback.format_exc()
-                    print "Unknown error occured.\n" + error
+                except Exception, e:
+                    print "Unknown error occured.\n" + str(e)
                 else:
                     print "Replied.\n"
                 already_done.append(comment.id)
-    except Exception:
-        error = traceback.format_exc()
-        print "Unknown error occured.\n" + error
+    except Exception, e:
+        print "Unknown error occured.\n" + str(e)
+        already_done.append(comment.id)
             
     
